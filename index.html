@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SucreBot System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.15);
+      --accent: #00d4ff;
+      --accent2: #ff6b35;
+      --green: #00ff88;
+      --red: #ff3b3b;
+      --text: #f0f0f5;
+      --muted: #7a7a8c;
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* GRID BG */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 24px 0 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    header img { width: 52px; }
+    header h1 { font-family: var(--font-display); font-size: 2.4rem; letter-spacing: 0.04em; color: var(--accent); line-height: 1; }
+    header span { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.1em; }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* =================== CRONÓMETRO =================== */
+    .crono-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
+
+    .crono-main {}
+
+    .evento-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .evento-row label { font-size: 0.75rem; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.1em; white-space: nowrap; }
+    .evento-row select {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+    }
+    .evento-row select:focus { border-color: var(--accent); }
+
+    /* Participante strip */
+    .participante-strip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .participante-strip .p-info { }
+    .participante-strip .p-robot { font-size: 1rem; font-weight: 600; color: var(--text); }
+    .participante-strip .p-inst { font-size: 0.8rem; color: var(--muted); }
+    .participante-strip .p-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,212,255,0.2);
+    }
+    .participante-strip.empty { border-left-color: var(--muted); }
+    .participante-strip.empty .p-robot { color: var(--muted); font-weight: 400; }
+
+    /* DISPLAY */
+    .crono-display {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .crono-display::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .crono-display.running::after { opacity: 1; animation: scanline 2s linear infinite; }
+    @keyframes scanline { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+    #cronometro {
+      font-family: var(--font-display);
+      font-size: 5.5rem;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      line-height: 1;
+      transition: color 0.3s;
+    }
+    .crono-display.running #cronometro { color: var(--accent); }
+    .crono-display.stopped #cronometro { color: var(--accent2); }
+
+    .crono-status {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    /* BOTONES */
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+
+    /* RONDAS E INTENTOS */
+    .ronda-config {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .ronda-config-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .ronda-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ronda-control label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+    }
+    .ronda-control input {
+      width: 52px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+      text-align: center;
+    }
+    .ronda-control input:focus { border-color: var(--accent); }
+    .ronda-status {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .ronda-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,212,255,0.3);
+      background: rgba(0,212,255,0.08);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    .intento-badge {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,107,53,0.3);
+      background: rgba(255,107,53,0.08);
+      color: var(--accent2);
+      white-space: nowrap;
+    }
+    .intentos-log {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .intentos-log-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .intento-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .intento-row:last-child { border-bottom: none; }
+    .intento-label { color: var(--muted); font-family: var(--font-mono); font-size: 0.75rem; }
+    .intento-tiempo { color: var(--text); font-family: var(--font-mono); font-weight: 600; }
+    .intento-mejor { color: var(--green); }
+
+    .btn-saltar {
+      width: 100%;
+      margin-top: 8px;
+      background: rgba(0,212,255,0.06);
+      border: 1px solid rgba(0,212,255,0.25);
+      color: var(--accent);
+      font-family: var(--font-body);
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn-saltar:hover { background: rgba(0,212,255,0.13); border-color: rgba(0,212,255,0.45); }
+
+    /* LISTA YA COMPITIERON */
+    .competidos-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      position: sticky;
+      top: 20px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .competidos-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .competidos-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+    .competidos-count {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(0,212,255,0.2);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .competido-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .competido-item:last-child { border-bottom: none; }
+    .competido-num {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      min-width: 24px;
+      padding-left: 8px;
+      flex-shrink: 0;
+    }
+    .competido-info { flex: 1; min-width: 0; }
+    .competido-robot {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .competido-tiempo {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+    }
+    .competido-del {
+      background: none;
+      border: 1px solid rgba(255,59,59,0.25);
+      color: rgba(255,59,59,0.5);
+      font-size: 0.7rem;
+      padding: 3px 7px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .competido-del:hover { background: rgba(255,59,59,0.1); border-color: var(--red); color: var(--red); }
+    .competido-sel {
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.3);
+      color: var(--accent);
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .competido-sel:hover { background: rgba(0,212,255,0.18); }
+
+    .eliminado-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      opacity: 0.75;
+    }
+    .eliminado-item:last-child { border-bottom: none; }
+    .eliminado-robot {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      flex: 1;
+      text-decoration: line-through;
+    }
+    .btn-recuperar {
+      background: rgba(0,255,136,0.07);
+      border: 1px solid rgba(0,255,136,0.25);
+      color: var(--green);
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-recuperar:hover { background: rgba(0,255,136,0.15); }
+    .competidos-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 24px 0; }
+
+    /* SECCIONES POR RONDA */
+    .ronda-section {
+      margin-bottom: 14px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .ronda-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--surface2);
+    }
+    .ronda-section-title {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+    .ronda-section-title.cerrada { color: var(--muted); }
+    .ronda-section-badge {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,212,255,0.25);
+      background: rgba(0,212,255,0.08);
+      color: var(--accent);
+    }
+    .ronda-section-badge.cerrada {
+      border-color: var(--border);
+      background: none;
+      color: var(--muted);
+    }
+    .ronda-section-body { padding: 6px 0; }
+    .ronda-eliminados {
+      padding: 8px 12px 4px;
+      border-top: 1px solid var(--border);
+      background: rgba(255,59,59,0.03);
+    }
+    .ronda-eliminados-title {
+      font-family: var(--font-mono);
+      font-size: 0.63rem;
+      letter-spacing: 0.08em;
+      color: var(--red);
+      margin-bottom: 6px;
+      opacity: 0.8;
+    }
+
+    .btn-cerrar-ronda {
+      width: 100%;
+      margin-bottom: 14px;
+      background: rgba(255,107,53,0.08);
+      border: 1px solid rgba(255,107,53,0.35);
+      color: var(--accent2);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn-cerrar-ronda:hover { background: rgba(255,107,53,0.16); }
+
+    .btn-exportar-excel {
+      flex: 1;
+      background: rgba(0,255,136,0.07);
+      border: 1px solid rgba(0,255,136,0.3);
+      color: var(--green);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 9px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.01em;
+    }
+    .btn-exportar-excel:hover { background: rgba(0,255,136,0.16); }
+
+    .btn-reiniciar-todo {
+      flex: 1;
+      background: rgba(255,59,59,0.07);
+      border: 1px solid rgba(255,59,59,0.3);
+      color: var(--red);
+      font-family: var(--font-body);
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 9px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.01em;
+    }
+    .btn-reiniciar-todo:hover { background: rgba(255,59,59,0.16); }
+
+    .btn-siguiente {
+      width: 100%;
+      margin-top: 12px;
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.35);
+      color: var(--green);
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      font-weight: 600;
+      padding: 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.03em;
+    }
+    .btn-siguiente:hover { background: rgba(0,255,136,0.15); }
+
+    .btn {
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 12px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn:hover { background: var(--surface2); border-color: var(--border2); }
+    .btn:active { transform: scale(0.97); }
+    .btn.start { border-color: rgba(0,255,136,0.4); color: var(--green); }
+    .btn.start:hover { background: rgba(0,255,136,0.08); }
+    .btn.stop { border-color: rgba(255,59,59,0.4); color: var(--red); }
+    .btn.stop:hover { background: rgba(255,59,59,0.08); }
+    .btn.reset { border-color: rgba(255,107,53,0.4); color: var(--accent2); }
+    .btn.reset:hover { background: rgba(255,107,53,0.08); }
+
+    /* SAVE TOAST */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2);
+      border: 1px solid rgba(0,255,136,0.4);
+      color: var(--green);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 12px 24px;
+      border-radius: 30px;
+      transition: transform 0.3s ease;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* =================== REGISTRO =================== */
+    .reg-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .form-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; }
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+      cursor: pointer;
+    }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--muted); }
+    .field select option { background: var(--surface2); }
+
+    /* Filtro categoría lista */
+    .lista-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .lista-filter label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+    .lista-filter select {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .lista-filter select:focus { border-color: var(--accent); }
+    .lista-count {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      margin-bottom: 10px;
+    }
+    .lista-cat-badge {
+      font-size: 0.68rem;
+      font-family: var(--font-mono);
+      background: rgba(0,212,255,0.1);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,212,255,0.2);
+      margin-left: 6px;
+    }
+
+    .btn-register {
+      width: 100%;
+      margin-top: 8px;
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 13px;
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: all 0.15s;
+    }
+    .btn-register:hover { opacity: 0.88; }
+    .btn-register:active { transform: scale(0.98); }
+
+    /* QR RESULT */
+    .qr-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+    .qr-card-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .qr-box {
+      background: #fff;
+      border-radius: 10px;
+      padding: 14px;
+      display: inline-block;
+      margin-bottom: 14px;
+    }
+    .qr-robot { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .qr-inst { font-size: 0.8rem; color: var(--muted); margin-bottom: 16px; }
+    .qr-empty { color: var(--muted); font-size: 0.85rem; padding: 40px 0; }
+
+    .btn-print {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    .btn-print:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-nuevo {
+      width: 100%;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-nuevo:hover { color: var(--text); border-color: var(--border2); }
+    .btn-email {
+      width: 100%;
+      background: rgba(0,255,136,0.07);
+      border: 1px solid rgba(0,255,136,0.3);
+      color: var(--green);
+      font-family: var(--font-body);
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 8px;
+    }
+    .btn-email:hover { background: rgba(0,255,136,0.14); }
+    .btn-email:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* LISTA */
+    .lista-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    .lista-title {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .lista-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .lista-item:last-child { border-bottom: none; }
+    .lista-robot { font-size: 0.9rem; font-weight: 500; color: var(--text); }
+    .lista-inst { font-size: 0.78rem; color: var(--muted); }
+    .btn-ver {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      font-size: 0.75rem;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-ver:hover { border-color: var(--accent); color: var(--accent); }
+    .empty-list { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 24px 0; }
+
+    .lista-actions { display: flex; gap: 6px; }
+    .btn-del {
+      background: none;
+      border: 1px solid rgba(255,59,59,0.3);
+      color: rgba(255,59,59,0.6);
+      font-size: 0.75rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-del:hover { background: rgba(255,59,59,0.1); border-color: var(--red); color: var(--red); }
+
+    /* MODAL CONFIRMACIÓN */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: var(--surface2);
+      border: 1px solid rgba(255,59,59,0.3);
+      border-radius: 16px;
+      padding: 28px 28px 22px;
+      max-width: 360px;
+      width: 90%;
+      transform: scale(0.92);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.show .modal-box { transform: scale(1); }
+    .modal-icon { font-size: 2rem; margin-bottom: 10px; }
+    .modal-title { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; color: var(--red); margin-bottom: 8px; }
+    .modal-name { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .modal-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 22px; }
+    .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-cancel {
+      background: none; border: 1px solid var(--border2); color: var(--muted);
+      font-family: var(--font-body); font-size: 0.85rem; padding: 11px;
+      border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .modal-cancel:hover { color: var(--text); border-color: var(--text); }
+    .modal-confirm {
+      background: rgba(255,59,59,0.12); border: 1px solid rgba(255,59,59,0.4); color: var(--red);
+      font-family: var(--font-body); font-size: 0.85rem; font-weight: 600; padding: 11px;
+      border-radius: 8px; cursor: pointer; transition: all 0.15s;
+    }
+    .modal-confirm:hover { background: rgba(255,59,59,0.22); }
+
+    .alert-success {
+      background: rgba(0,255,136,0.08);
+      border: 1px solid rgba(0,255,136,0.3);
+      color: var(--green);
+      font-size: 0.82rem;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      display: none;
+      font-family: var(--font-mono);
+    }
+    .alert-success.show { display: block; }
+
+    @media (max-width: 680px) {
+      .crono-layout, .reg-layout { grid-template-columns: 1fr; }
+      #cronometro { font-size: 4rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .competidos-card { position: static; max-height: none; }
+    }
+
+    /* =================== TABLA RESULTADOS =================== */
+    .resultados-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .resultados-titulo {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .resultados-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .res-badge-ronda {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(0,212,255,0.3);
+      background: rgba(0,212,255,0.08);
+      color: var(--accent);
+    }
+    .res-badge-cat {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,107,53,0.3);
+      background: rgba(255,107,53,0.08);
+      color: var(--accent2);
+    }
+    .res-vacia {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 60px 0;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+    }
+    .res-tabla {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .res-tabla thead tr {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border2);
+    }
+    .res-tabla thead th {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      padding: 10px 14px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .res-tabla thead th.num { text-align: center; width: 40px; }
+    .res-tabla thead th.tiempo { text-align: center; }
+    .res-tabla tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .res-tabla tbody tr:hover { background: rgba(255,255,255,0.03); }
+    .res-tabla tbody tr:last-child { border-bottom: none; }
+    .res-tabla td {
+      padding: 11px 14px;
+      font-size: 0.88rem;
+      color: var(--text);
+      vertical-align: middle;
+    }
+    .res-tabla td.num {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding-left: 8px;
+    }
+    .res-podio-1 td { background: rgba(255,215,0,0.06); }
+    .res-podio-2 td { background: rgba(192,192,192,0.05); }
+    .res-podio-3 td { background: rgba(205,127,50,0.05); }
+    .res-pos {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .res-pos-1 { background: rgba(255,215,0,0.2); color: #FFD700; border: 1px solid rgba(255,215,0,0.4); }
+    .res-pos-2 { background: rgba(192,192,192,0.2); color: #C0C0C0; border: 1px solid rgba(192,192,192,0.4); }
+    .res-pos-3 { background: rgba(205,127,50,0.2); color: #CD7F32; border: 1px solid rgba(205,127,50,0.4); }
+    .res-pos-n { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+    .res-robot { font-weight: 600; color: var(--text); }
+    .res-inst { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .res-tiempo-mejor {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--green);
+      text-align: center;
+    }
+    .res-intentos {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .res-intento-chip {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .res-intento-chip.mejor {
+      background: rgba(0,255,136,0.08);
+      border-color: rgba(0,255,136,0.3);
+      color: var(--green);
+    }
+    .res-sin-tiempo {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+  <header>
+    <img src="sucrebot.png" alt="Logo">
+    <div>
+      <h1>SucreBot</h1>
+      <span>SISTEMA DE CRONOMETRAJE</span>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('crono')">⏱ Cronómetro</button>
+    <button class="tab-btn" onclick="switchTab('registro')">📋 Registro</button>
+    <button class="tab-btn" onclick="switchTab('resultados')">🏆 Resultados</button>
+  </div>
+
+  <!-- ===== PESTAÑA CRONÓMETRO ===== -->
+  <div id="tab-crono" class="panel active">
+    <div class="crono-layout">
+      <div class="crono-main">
+
+        <div class="evento-row">
+          <label>EVENTO</label>
+          <select id="menu">
+            <option value="">— Seleccione un evento —</option>
+            <option value="1">Seguidor velocidad sin turbina</option>
+            <option value="2">Seguidor velocidad con turbina</option>
+            <option value="3">Robot laberinto</option>
+            <option value="4">Robot Balancín</option>
+            <option value="5">Robot trepador</option>
+            <option value="6">Seguidor destreza</option>
+            <option value="7">Drones</option>
+            <option value="8">Insectos</option>
+          </select>
+        </div>
+
+        <!-- CONFIGURACIÓN RONDAS -->
+        <div class="ronda-config">
+          <span class="ronda-config-title">CONFIGURACIÓN</span>
+          <div class="ronda-control">
+            <label>RONDAS</label>
+            <input type="number" id="cfg-rondas" value="3" min="1" max="10" onchange="actualizarConfigRonda()">
+          </div>
+          <div class="ronda-control">
+            <label>INTENTOS</label>
+            <input type="number" id="cfg-intentos" value="2" min="1" max="5" onchange="actualizarConfigRonda()">
+          </div>
+          <div class="ronda-status">
+            <span class="ronda-badge" id="badge-ronda">RONDA 1</span>
+            <span class="intento-badge" id="badge-intento">INTENTO 1</span>
+          </div>
+        </div>
+
+        <div id="participante-strip" class="participante-strip empty">
+          <div class="p-info">
+            <div class="p-robot">Sin participante escaneado</div>
+            <div class="p-inst">Escanea el QR para asignar</div>
+          </div>
+          <span class="p-badge">—</span>
+        </div>
+
+        <div id="crono-display" class="crono-display">
+          <div id="cronometro">00:00:00</div>
+          <div class="crono-status" id="crono-status">LISTO</div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn start" onclick="iniciarCronometro()">▶ INICIAR</button>
+          <button class="btn stop" onclick="detenerCronometro()">⏹ DETENER</button>
+          <button class="btn reset" onclick="reiniciarCronometro()">↺ RESET</button>
+        </div>
+        <button class="btn-siguiente" id="btn-siguiente" onclick="siguienteIntento()" style="display:none">
+          ➜ Siguiente intento
+        </button>
+        <button class="btn-saltar" id="btn-saltar" onclick="limpiarParticipante()" style="display:none">
+          ⏭ Siguiente participante
+        </button>
+        <div id="aviso-intentos" style="display:none;text-align:center;font-family:var(--font-mono);font-size:0.72rem;color:var(--muted);margin-top:6px;letter-spacing:0.08em"></div>
+
+        <!-- LOG DE INTENTOS -->
+        <div class="intentos-log" id="intentos-log">
+          <div class="intentos-log-title">INTENTOS DE ESTE PARTICIPANTE</div>
+          <div id="intentos-lista"></div>
+        </div>
+      </div>
+
+      <!-- PANEL DERECHO: LISTA COMPETIDOS -->
+      <div class="competidos-card">
+        <div class="competidos-header">
+          <div class="competidos-title" id="panel-ronda-titulo">RONDA 1</div>
+          <span class="competidos-count" id="competidos-count">0</span>
+        </div>
+        <button class="btn-cerrar-ronda" id="btn-cerrar-ronda" onclick="pedirCerrarRonda()">
+          🏁 Cerrar Ronda <span id="cerrar-ronda-num">1</span>
+        </button>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn-exportar-excel" onclick="exportarExcel()" title="Descargar resultados en Excel">
+            📊 Exportar Excel
+          </button>
+          <button class="btn-reiniciar-todo" onclick="pedirReiniciarTodo()" title="Reiniciar todo">
+            🔄 Reiniciar
+          </button>
+        </div>
+
+        <!-- RONDAS DINÁMICAS -->
+        <div id="rondas-container"></div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== PESTAÑA RESULTADOS ===== -->
+  <div id="tab-resultados" class="panel">
+    <div class="resultados-header">
+      <div class="resultados-titulo">RESULTADOS</div>
+      <div class="resultados-meta">
+        <span class="res-badge-ronda" id="res-badge-ronda">RONDA 1</span>
+        <span class="res-badge-cat" id="res-badge-cat">—</span>
+      </div>
+    </div>
+    <div id="res-contenido">
+      <p class="res-vacia">Aún no hay participantes en esta ronda</p>
+    </div>
+  </div>
+
+  <!-- ===== PESTAÑA REGISTRO ===== -->
+  <div id="tab-registro" class="panel">
+    <div class="reg-layout">
+      <div>
+        <div class="form-card">
+          <div class="form-title">REGISTRO DE PARTICIPANTE</div>
+          <div id="alert-ok" class="alert-success">✓ Participante registrado correctamente</div>
+          <div class="form-grid">
+            <div class="field"><label>NOMBRE COMPLETO</label><input type="text" id="f-nombre" placeholder="Juan Pérez"></div>
+            <div class="field"><label>INSTITUCIÓN</label><input type="text" id="f-institucion" placeholder="Universidad Central"></div>
+            <div class="field"><label>CIUDAD</label><input type="text" id="f-ciudad" placeholder="Quito"></div>
+            <div class="field"><label>NOMBRE DEL ROBOT</label><input type="text" id="f-robot" placeholder="RoboX-1"></div>
+            <div class="field"><label>NÚMERO DE CONTACTO</label><input type="tel" id="f-contacto" placeholder="0991234567"></div>
+            <div class="field"><label>CORREO ELECTRÓNICO</label><input type="email" id="f-correo" placeholder="juan@gmail.com"></div>
+            <div class="field" style="grid-column: span 2;">
+              <label>CATEGORÍA DE COMPETENCIA</label>
+              <select id="f-categoria">
+                <option value="">— Seleccione una categoría —</option>
+                <option value="Seguidor velocidad sin turbina">Seguidor velocidad sin turbina</option>
+                <option value="Seguidor velocidad con turbina">Seguidor velocidad con turbina</option>
+                <option value="Robot laberinto">Robot laberinto</option>
+                <option value="Robot Balancín">Robot Balancín</option>
+                <option value="Robot trepador">Robot trepador</option>
+                <option value="Seguidor destreza">Seguidor destreza</option>
+                <option value="Drones">Drones</option>
+                <option value="Insectos">Insectos</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-register" onclick="registrarParticipante()">Registrar y generar QR</button>
+        </div>
+
+        <div class="lista-card">
+          <div class="lista-title">PARTICIPANTES REGISTRADOS</div>
+          <div class="lista-filter">
+            <label>CATEGORÍA</label>
+            <select id="filtro-categoria" onchange="cargarListaLocal()">
+              <option value="">— Todas las categorías —</option>
+              <option value="Seguidor velocidad sin turbina">Seguidor velocidad sin turbina</option>
+              <option value="Seguidor velocidad con turbina">Seguidor velocidad con turbina</option>
+              <option value="Robot laberinto">Robot laberinto</option>
+              <option value="Robot Balancín">Robot Balancín</option>
+              <option value="Robot trepador">Robot trepador</option>
+              <option value="Seguidor destreza">Seguidor destreza</option>
+              <option value="Drones">Drones</option>
+              <option value="Insectos">Insectos</option>
+            </select>
+          </div>
+          <div class="lista-count" id="lista-count"></div>
+          <div id="lista-participantes"><p class="empty-list">Aún no hay participantes.</p></div>
+        </div>
+      </div>
+
+      <div class="qr-card">
+        <div class="qr-card-title">CÓDIGO QR</div>
+        <div id="qr-empty" class="qr-empty">El QR aparecerá aquí después del registro</div>
+        <div id="qr-result" style="display:none">
+          <div class="qr-box"><div id="qr-canvas"></div></div>
+          <div class="qr-robot" id="qr-label-robot"></div>
+          <div class="qr-inst" id="qr-label-inst"></div>
+          <button class="btn-print" onclick="imprimirQR()">🖨 Imprimir QR</button>
+          <button class="btn-email" id="btn-email" onclick="enviarCorreo()">✉ Enviar QR por correo</button>
+          <button class="btn-nuevo" onclick="nuevoRegistro()">+ Nuevo registro</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CERRAR RONDA -->
+<div class="modal-overlay" id="modal-ronda">
+  <div class="modal-box" style="border-color: rgba(255,107,53,0.3);">
+    <div class="modal-icon">🏁</div>
+    <div class="modal-title" style="color:var(--accent2)">CERRAR RONDA</div>
+    <div class="modal-name" id="modal-ronda-nombre">Ronda 1</div>
+    <div class="modal-sub">Todos los participantes de esta ronda habrán terminado. ¿Continuar?</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="cerrarModalRonda()">Cancelar</button>
+      <button class="modal-confirm" style="border-color:rgba(255,107,53,0.4);color:var(--accent2);background:rgba(255,107,53,0.12)" onclick="confirmarCerrarRonda()">Cerrar Ronda</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REINICIAR TODO -->
+<div class="modal-overlay" id="modal-reiniciar">
+  <div class="modal-box" style="border-color: rgba(255,59,59,0.4);">
+    <div class="modal-icon">🔄</div>
+    <div class="modal-title" style="color:var(--red)">REINICIAR TODO</div>
+    <div class="modal-name">¿Borrar toda la competencia?</div>
+    <div class="modal-sub">Se eliminarán todas las rondas, tiempos y el participante activo. Quedará como al abrir la página.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="cerrarModalReiniciar()">Cancelar</button>
+      <button class="modal-confirm" style="border-color:rgba(255,59,59,0.5);color:var(--red);background:rgba(255,59,59,0.15)" onclick="confirmarReiniciarTodo()">Sí, reiniciar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL BORRAR -->
+<div class="modal-overlay" id="modal-borrar">
+  <div class="modal-box">
+    <div class="modal-icon">🗑</div>
+    <div class="modal-title">CONFIRMAR ELIMINACIÓN</div>
+    <div class="modal-name" id="modal-robot-nombre">—</div>
+    <div class="modal-sub" id="modal-robot-sub">Esta acción no se puede deshacer.</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="cerrarModal()">Cancelar</button>
+      <button class="modal-confirm" onclick="confirmarBorrar()">Sí, eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- SHEETJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+  // ===================== GOOGLE APPS SCRIPT BACKEND =====================
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxcbYzJOBWGVjl-bVLr5EHdxoSHmLmdpVEieE2WoHrdV0jy4KGAHTDrVSK5386luJtlgA/exec';
+
+  async function gasGet(params) {
+    const url = GAS_URL + '?' + new URLSearchParams(params);
+    const r = await fetch(url);
+    return r.json();
+  }
+
+  async function gasPost(data) {
+    const r = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return r.json();
+  }
+
+  // ── Polling participante_activo (reemplaza Firebase realtime) ──
+  let _pollingActivo = null;
+  let _ultimoTsActivo = 0;
+  const PAGINA_CARGADA = Date.now();
+
+  function iniciarPolling() {
+    if (_pollingActivo) return;
+    _pollingActivo = setInterval(async () => {
+      try {
+        const res = await gasGet({ action: 'getActivo' });
+        if (!res || !res.raw || !res.ts) return;
+        const ts = Number(res.ts);
+        if (ts <= _ultimoTsActivo) return;       // ya procesado
+        if (ts < PAGINA_CARGADA) return;          // era anterior a abrir la página
+        _ultimoTsActivo = ts;
+        const p = JSON.parse(res.raw);
+        if (!p || !p.id) return;
+        recibirParticipanteActivo(p);
+      } catch(e) {}
+    }, 2000);
+  }
+
+  // Objeto db compatible: simula la API de Firebase con GAS
+  const db = {
+    ref: (path) => ({
+      set: async (data) => {
+        if (path.startsWith('participantes/')) {
+          const id = path.split('/')[1];
+          await gasPost({ action: 'setParticipante', id, ...data });
+        } else if (path === 'participante_activo') {
+          await gasPost({ action: 'setActivo', participante: data });
+        }
+      },
+      push: async (data) => {
+        await gasPost({ action: 'pushResultado', ...data });
+        return {};
+      },
+      remove: async () => {
+        if (path === 'participante_activo') {
+          await gasPost({ action: 'clearActivo' });
+        } else if (path.startsWith('participantes/')) {
+          // El borrado desde Sheets no se implementa aquí — se borra solo de localStorage
+        }
+      },
+      on: (event, cb) => {
+        if (path === 'participantes') {
+          // Cargar participantes desde GAS al iniciar
+          gasGet({ action: 'getParticipantes' }).then(arr => {
+            if (Array.isArray(arr) && arr.length > 0) {
+              localStorage.setItem('participantes', JSON.stringify(arr));
+              cargarListaLocal();
+            }
+          }).catch(() => {});
+        }
+        if (path === 'participante_activo') {
+          // El polling lo maneja iniciarPolling()
+          iniciarPolling();
+        }
+      }
+    })
+  };
+</script>
+
+<!-- QR CODE LIB -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- EMAILJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('BAsiR4qoFmaupsgRP');</script>
+
+<script>
+// ===================== TABS =====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['crono','registro','resultados'][i] === tab);
+  });
+  document.getElementById('tab-crono').classList.toggle('active', tab === 'crono');
+  document.getElementById('tab-registro').classList.toggle('active', tab === 'registro');
+  document.getElementById('tab-resultados').classList.toggle('active', tab === 'resultados');
+  if (tab === 'registro') cargarListaLocal();
+  if (tab === 'resultados') renderTablaResultados();
+}
+
+// ===================== TABLA DE RESULTADOS =====================
+function renderTablaResultados() {
+  const rd = getRonda(rondaActual);
+  const badgeRonda = document.getElementById('res-badge-ronda');
+  const badgeCat   = document.getElementById('res-badge-cat');
+  const contenido  = document.getElementById('res-contenido');
+
+  badgeRonda.textContent = 'RONDA ' + rondaActual;
+
+  // Detectar categoría
+  const cat = (rd.clasificados[0] && rd.clasificados[0].categoria) || '—';
+  badgeCat.textContent = cat;
+
+  // Filtrar los que ya tienen tiempo real
+  const conTiempo = rd.clasificados.filter(c => c.tiempo && c.tiempo !== '—');
+
+  if (conTiempo.length === 0) {
+    contenido.innerHTML = '<p class="res-vacia">Aún no hay participantes con tiempo en esta ronda</p>';
+    return;
+  }
+
+  // Ordenar por mejor tiempo
+  const ordenados = [...conTiempo].sort((a, b) => tiempoASegundos(a.tiempo) - tiempoASegundos(b.tiempo));
+
+  // Calcular max intentos para encabezados
+  const maxI = Math.max(...ordenados.map(c => (c.tiempos || []).length), 1);
+  const intentoHeaders = Array.from({length: maxI}, (_, i) =>
+    `<th class="tiempo">I${i+1}</th>`
+  ).join('');
+
+  const filas = ordenados.map((c, i) => {
+    const pos = i + 1;
+    const claseRow = pos === 1 ? 'res-podio-1' : pos === 2 ? 'res-podio-2' : pos === 3 ? 'res-podio-3' : '';
+    const clasePos = pos === 1 ? 'res-pos-1' : pos === 2 ? 'res-pos-2' : pos === 3 ? 'res-pos-3' : 'res-pos-n';
+    const medallon  = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : pos;
+
+    const intentosCeldas = Array.from({length: maxI}, (_, idx) => {
+      const t = c.tiempos && c.tiempos[idx] ? c.tiempos[idx] : '—';
+      const esMejor = t === c.tiempo && t !== '—';
+      return `<td><span class="res-intento-chip ${esMejor ? 'mejor' : ''}">${t}</span></td>`;
+    }).join('');
+
+    return `
+      <tr class="${claseRow}">
+        <td class="num"><span class="res-pos ${clasePos}">${medallon}</span></td>
+        <td>
+          <div class="res-robot">${c.robot}</div>
+          <div class="res-inst">${c.institucion || ''}${c.ciudad ? ' · ' + c.ciudad : ''}</div>
+        </td>
+        <td class="res-tiempo-mejor">${c.tiempo}</td>
+        ${intentosCeldas}
+      </tr>`;
+  }).join('');
+
+  contenido.innerHTML = `
+    <table class="res-tabla">
+      <thead>
+        <tr>
+          <th class="num">#</th>
+          <th>Robot / Equipo</th>
+          <th class="tiempo">Mejor Tiempo</th>
+          ${intentoHeaders}
+        </tr>
+      </thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+}
+
+// ===================== CRONÓMETRO =====================
+let centesimas = 0, segundos = 0, minutos = 0;
+let intervalo = null;
+let tiempo = null;
+let participanteActual = null;
+
+// Rondas e intentos
+let rondaActual = 1;
+let intentoActual = 1;
+let maxRondas = 3;
+let maxIntentos = 2;
+let intentosLog = []; // { ronda, intento, tiempo }
+
+function actualizarCronometro() {
+  centesimas++;
+  if (centesimas >= 100) { centesimas = 0; segundos++; }
+  if (segundos >= 60) { segundos = 0; minutos++; }
+  tiempo =
+    (minutos < 10 ? '0' + minutos : minutos) + ':' +
+    (segundos < 10 ? '0' + segundos : segundos) + ':' +
+    (centesimas < 10 ? '0' + centesimas : centesimas);
+  document.getElementById('cronometro').textContent = tiempo;
+}
+
+function iniciarCronometro() {
+  const menu = document.getElementById('menu').value;
+  if (menu === '') { showToast('⚠ Selecciona un evento primero', true); return; }
+  if (!participanteActual) { showToast('⚠ Escanea el QR del participante primero', true); return; }
+  if (intervalo) return;
+  intervalo = setInterval(actualizarCronometro, 10);
+  document.getElementById('crono-display').className = 'crono-display running';
+  document.getElementById('crono-status').textContent = 'EN CURSO';
+}
+
+function detenerCronometro() {
+  if (!intervalo) { showToast('⚠ El cronómetro no está corriendo', true); return; }
+  clearInterval(intervalo);
+  intervalo = null;
+  if (!tiempo) { showToast('⚠ El cronómetro no ha iniciado', true); return; }
+  const menu = document.getElementById('menu').value;
+  if (menu === '') { showToast('⚠ Seleccione un evento', true); return; }
+
+  const rutas = { '1':'SVST','2':'SVCT','3':'RL','4':'RB','5':'RTR','6':'SVDZ','7':'RD','8':'INS' };
+  const ruta = rutas[menu];
+
+  document.getElementById('crono-display').className = 'crono-display stopped';
+  document.getElementById('crono-status').textContent = 'DETENIDO · ' + tiempo;
+
+  // Leer siempre del input para evitar desincronización
+  maxIntentos = parseInt(document.getElementById('cfg-intentos').value) || 2;
+  maxRondas   = parseInt(document.getElementById('cfg-rondas').value)   || 3;
+
+  // Evitar guardar duplicado si ya se guardó este intento
+  const yaGuardado = intentosLog.find(i => i.ronda === rondaActual && i.intento === intentoActual);
+  if (!yaGuardado) {
+    intentosLog.push({ ronda: rondaActual, intento: intentoActual, tiempo: tiempo });
+    renderIntentosLog();
+    agregarCompetido(participanteActual.robot, tiempo, rondaActual, intentoActual);
+
+    gasPost({
+      action: 'pushResultado',
+      participanteId: participanteActual.id,
+      nombre: participanteActual.nombre || participanteActual.id,
+      robot: participanteActual.robot,
+      institucion: participanteActual.institucion,
+      tiempo: tiempo,
+      ronda: rondaActual,
+      intento: intentoActual,
+      ruta: ruta,
+      fecha: new Date().toLocaleString()
+    }).then(() => {
+      showToast('✓ R' + rondaActual + ' · I' + intentoActual + ' → ' + tiempo);
+    }).catch(() => {
+      showToast('⚠ Error al guardar en Sheets', true);
+    });
+  }
+
+  // Contar intentos realmente completados en esta ronda para este participante
+  const intentosCompletados = intentosLog.filter(i => i.ronda === rondaActual).length;
+
+  // Decidir qué botón mostrar basado en intentos completados reales
+  if (intentosCompletados < maxIntentos) {
+    // Quedan más intentos → mostrar "Siguiente intento", NO "Siguiente participante"
+    document.getElementById('btn-siguiente').textContent = '➜ Intento ' + (intentosCompletados + 1);
+    document.getElementById('btn-siguiente').onclick = siguienteIntento;
+    document.getElementById('btn-siguiente').style.display = 'block';
+    document.getElementById('btn-saltar').style.display = 'none';
+    const aviso = document.getElementById('aviso-intentos');
+    if (aviso) { aviso.textContent = 'Faltan ' + (maxIntentos - intentosCompletados) + ' intento(s) · completa todos antes de pasar al siguiente'; aviso.style.display = 'block'; }
+  } else {
+    // Completó todos los intentos → mostrar "Siguiente participante"
+    document.getElementById('btn-siguiente').style.display = 'none';
+    document.getElementById('btn-saltar').textContent = '⏭ Siguiente participante';
+    document.getElementById('btn-saltar').style.display = 'block';
+    const aviso = document.getElementById('aviso-intentos');
+    if (aviso) aviso.style.display = 'none';
+  }
+}
+
+function reiniciarCronometro() {
+  clearInterval(intervalo);
+  intervalo = null;
+  centesimas = 0; segundos = 0; minutos = 0;
+  tiempo = null;
+  document.getElementById('cronometro').textContent = '00:00:00';
+  document.getElementById('crono-display').className = 'crono-display';
+  document.getElementById('crono-status').textContent = 'LISTO';
+  document.getElementById('btn-siguiente').style.display = 'none';
+  document.getElementById('btn-saltar').style.display = 'none';
+  const aviso = document.getElementById('aviso-intentos');
+  if (aviso) aviso.style.display = 'none';
+}
+
+function actualizarConfigRonda() {
+  maxRondas   = parseInt(document.getElementById('cfg-rondas').value)   || 3;
+  maxIntentos = parseInt(document.getElementById('cfg-intentos').value) || 2;
+}
+
+function actualizarBadges() {
+  document.getElementById('badge-ronda').textContent   = 'RONDA '   + rondaActual;
+  document.getElementById('badge-intento').textContent = 'INTENTO ' + intentoActual;
+  document.getElementById('cerrar-ronda-num').textContent = rondaActual;
+}
+
+function siguienteIntento() {
+  intentoActual++;
+  actualizarBadges();
+  clearInterval(intervalo);
+  intervalo = null;
+  centesimas = 0; segundos = 0; minutos = 0;
+  tiempo = null;
+  document.getElementById('cronometro').textContent = '00:00:00';
+  document.getElementById('crono-display').className = 'crono-display';
+  document.getElementById('crono-status').textContent = 'LISTO · Intento ' + intentoActual + ' de ' + maxIntentos;
+  document.getElementById('btn-siguiente').style.display = 'none';
+  // Ocultar "Siguiente participante" mientras aún tiene intentos pendientes
+  document.getElementById('btn-saltar').style.display = 'none';
+}
+
+function nuevaRonda() {
+  rondaActual++;
+  intentoActual = 1;
+  actualizarBadges();
+  reiniciarCronometro();
+  showToast('▶ Ronda ' + rondaActual + ' iniciada');
+}
+
+function renderIntentosLog() {
+  const log = document.getElementById('intentos-log');
+  const lista = document.getElementById('intentos-lista');
+  log.style.display = 'block';
+
+  // Encontrar mejor tiempo
+  const tiempos = intentosLog.map(i => i.tiempo);
+  const mejor = tiempos.slice().sort()[0];
+
+  lista.innerHTML = intentosLog.map(i => `
+    <div class="intento-row">
+      <span class="intento-label">Ronda ${i.ronda} · Intento ${i.intento}</span>
+      <span class="intento-tiempo ${i.tiempo === mejor ? 'intento-mejor' : ''}">${i.tiempo}${i.tiempo === mejor ? ' ★' : ''}</span>
+    </div>
+  `).join('');
+}
+
+// ===================== SISTEMA DE RONDAS - PANEL DERECHO =====================
+// rondasData[r] = { clasificados: [...], eliminados: [...], cerrada: bool }
+let rondasData = { 1: { clasificados: [], eliminados: [], cerrada: false } };
+
+function getRonda(r) {
+  if (!rondasData[r]) rondasData[r] = { clasificados: [], eliminados: [], cerrada: false };
+  return rondasData[r];
+}
+
+function agregarCompetido(robot, tiempo, ronda, intento) {
+  const rd = getRonda(ronda);
+  // Buscar por nombre del robot (más confiable que id)
+  const existeIdx = rd.clasificados.findIndex(c => c.robot === participanteActual.robot);
+  if (existeIdx >= 0) {
+    // Siempre actualizar con el tiempo más reciente y marcar qué intento fue mejor
+    const tiempoAnterior = rd.clasificados[existeIdx].tiempo;
+    rd.clasificados[existeIdx].tiempos = rd.clasificados[existeIdx].tiempos || [tiempoAnterior];
+    rd.clasificados[existeIdx].tiempos.push(tiempo);
+    // Guardar el mejor tiempo
+    if (tiempo < tiempoAnterior) {
+      rd.clasificados[existeIdx].tiempo = tiempo;
+      rd.clasificados[existeIdx].intento = intento;
+    }
+  } else {
+    rd.clasificados.push({
+      id: participanteActual.id,
+      robot: participanteActual.robot,
+      nombre: participanteActual.nombre || '',
+      institucion: participanteActual.institucion || '',
+      ciudad: participanteActual.ciudad || '',
+      categoria: participanteActual.categoria || '',
+      tiempo, ronda, intento,
+      tiempos: [tiempo],
+      ts: Date.now()
+    });
+  }
+  renderTodasRondas();
+  document.getElementById('competidos-count').textContent = rd.clasificados.length;
+}
+
+function eliminarCompetido(ts, ronda) {
+  const rd = getRonda(ronda);
+  const c = rd.clasificados.find(x => x.ts === ts);
+  if (!c) return;
+  rd.clasificados = rd.clasificados.filter(x => x.ts !== ts);
+  rd.eliminados.push(c);
+  renderTodasRondas();
+}
+
+function recuperarEliminado(ts, ronda) {
+  const rd = getRonda(ronda);
+  const c = rd.eliminados.find(x => x.ts === ts);
+  if (!c) return;
+  rd.eliminados = rd.eliminados.filter(x => x.ts !== ts);
+  rd.clasificados.push(c);
+  renderTodasRondas();
+  showToast('✓ ' + c.robot + ' recuperado');
+}
+
+function seleccionarCompetido(ts, ronda) {
+  const rd = getRonda(ronda);
+  const c = rd.clasificados.find(x => x.ts === ts);
+  if (!c) return;
+  participanteActual = { id: c.id, robot: c.robot, nombre: c.nombre, institucion: c.institucion, ciudad: c.ciudad, categoria: c.categoria };
+  const strip = document.getElementById('participante-strip');
+  strip.className = 'participante-strip';
+  strip.innerHTML = `
+    <div class="p-info">
+      <div class="p-robot">${c.robot}</div>
+      <div class="p-inst">${c.institucion}${c.ciudad ? ' · ' + c.ciudad : ''}${c.categoria ? ' · <strong style="color:var(--accent)">' + c.categoria + '</strong>' : ''}</div>
+    </div>
+    <span class="p-badge">LISTO ✓</span>
+  `;
+  const CATEGORIAS_VALOR = {'Seguidor velocidad sin turbina':'1','Seguidor velocidad con turbina':'2','Robot laberinto':'3','Robot Balancín':'4','Robot trepador':'5','Seguidor destreza':'6','Drones':'7','Insectos':'8'};
+  if (c.categoria && CATEGORIAS_VALOR[c.categoria]) {
+    document.getElementById('menu').value = CATEGORIAS_VALOR[c.categoria];
+  }
+  intentosLog = [];
+  intentoActual = 1;
+  actualizarBadges();
+  reiniciarCronometro();
+  showToast('✓ ' + c.robot + ' listo para Ronda ' + rondaActual);
+}
+
+function renderTodasRondas() {
+  const container = document.getElementById('rondas-container');
+  const rondas = Object.keys(rondasData).map(Number).sort((a, b) => b - a); // ronda más reciente arriba
+  container.innerHTML = rondas.map(r => {
+    const rd = rondasData[r];
+    const esActual = r === rondaActual;
+    const cerrada = rd.cerrada;
+    const clasificados = rd.clasificados;
+    const eliminados = rd.eliminados;
+
+    const itemsClasificados = clasificados.length === 0
+      ? `<p class="competidos-empty">Ninguno aún</p>`
+      : clasificados.map((c, i) => {
+          const intentosStr = c.tiempos
+            ? c.tiempos.map((t, idx) => `<span style="font-size:0.65rem;color:${t === c.tiempo ? 'var(--green)' : 'var(--muted)'};font-family:var(--font-mono)">I${idx+1}:${t}</span>`).join(' · ')
+            : `<span style="font-size:0.65rem;color:var(--accent);font-family:var(--font-mono)">I${c.intento}:${c.tiempo}</span>`;
+          return `
+          <div class="competido-item">
+            <span class="competido-num">${i + 1}</span>
+            <div class="competido-info">
+              <div class="competido-robot">${c.robot}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px">${intentosStr}</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              ${esActual ? `<button class="competido-sel" onclick="seleccionarCompetido(${c.ts},${r})" title="Cargar al cronómetro">▶</button>` : ''}
+              ${esActual ? `<button class="competido-del" onclick="eliminarCompetido(${c.ts},${r})" title="Eliminar">🗑</button>` : ''}
+            </div>
+          </div>`;}).join('');
+
+    const itemsEliminados = eliminados.length === 0 ? '' : `
+      <div class="ronda-eliminados">
+        <div class="ronda-eliminados-title">ELIMINADOS</div>
+        ${eliminados.map(c => `
+          <div class="eliminado-item">
+            <div style="flex:1;min-width:0">
+              <div class="eliminado-robot">${c.robot}</div>
+              <div style="font-size:0.65rem;color:var(--muted);font-family:var(--font-mono)">${c.tiempo} · I${c.intento}</div>
+            </div>
+            ${esActual ? `<button class="btn-recuperar" onclick="recuperarEliminado(${c.ts},${r})">↩</button>` : ''}
+          </div>`).join('')}
+      </div>`;
+
+    return `
+      <div class="ronda-section">
+        <div class="ronda-section-header">
+          <span class="ronda-section-title ${cerrada ? 'cerrada' : ''}">
+            ${cerrada ? '✓' : '●'} RONDA ${r}
+          </span>
+          <span class="ronda-section-badge ${cerrada ? 'cerrada' : ''}">${clasificados.length} clasificados</span>
+        </div>
+        <div class="ronda-section-body">${itemsClasificados}</div>
+        ${itemsEliminados}
+      </div>`;
+  }).join('');
+}
+
+// ===================== CERRAR RONDA =====================
+function pedirCerrarRonda() {
+  document.getElementById('modal-ronda-nombre').textContent = 'Ronda ' + rondaActual;
+  document.getElementById('modal-ronda').classList.add('show');
+}
+
+function cerrarModalRonda() {
+  document.getElementById('modal-ronda').classList.remove('show');
+}
+
+function confirmarCerrarRonda() {
+  cerrarModalRonda();
+
+  // Marcar ronda actual como cerrada
+  getRonda(rondaActual).cerrada = true;
+
+  if (rondaActual < maxRondas) {
+    const rondaAnterior = rondaActual;
+    rondaActual++;
+    intentoActual = 1;
+    actualizarBadges();
+
+    // Crear nueva ronda con los clasificados de la anterior (sin eliminados)
+    const anterior = getRonda(rondaAnterior);
+    const nuevaRondaData = getRonda(rondaActual);
+    // Copiar clasificados como base para seleccionar en la nueva ronda
+    // (se limpian sus tiempos para que compitan de nuevo)
+    nuevaRondaData.clasificados = anterior.clasificados.map(c => ({
+      ...c,
+      tiempo: '—',
+      tiempos: [],      // limpiar tiempos de la ronda anterior
+      ronda: rondaActual,
+      intento: 0,
+      ts: c.ts + rondaActual // ts único
+    }));
+
+    document.getElementById('competidos-count').textContent = '0';
+    renderTodasRondas();
+    limpiarParticipante();
+    showToast('🏁 Ronda ' + rondaAnterior + ' cerrada · Ronda ' + rondaActual + ' lista');
+  } else {
+    document.getElementById('btn-cerrar-ronda').disabled = true;
+    document.getElementById('btn-cerrar-ronda').textContent = '✓ Competencia finalizada';
+    document.getElementById('btn-cerrar-ronda').style.opacity = '0.5';
+    renderTodasRondas();
+    limpiarParticipante();
+    showToast('🏆 Competencia finalizada');
+  }
+}
+
+// Cerrar modal ronda al hacer click fuera
+document.addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-ronda')) cerrarModalRonda();
+});
+
+// ===================== LIMPIAR PARTICIPANTE =====================
+function limpiarParticipante() {
+  participanteActual = null;
+  intentosLog = [];
+  intentoActual = 1;   // reset para el siguiente participante de esta misma ronda
+  actualizarBadges();
+  // NO resetear rondaActual aquí — se maneja por separado
+  const strip = document.getElementById('participante-strip');
+  strip.className = 'participante-strip empty';
+  strip.innerHTML = `
+    <div class="p-info">
+      <div class="p-robot">Sin participante</div>
+      <div class="p-inst">Esperando el siguiente desde la app</div>
+    </div>
+    <span class="p-badge">—</span>
+  `;
+  document.getElementById('btn-siguiente').style.display = 'none';
+  document.getElementById('btn-saltar').style.display = 'none';
+  document.getElementById('intentos-log').style.display = 'none';
+  document.getElementById('intentos-lista').innerHTML = '';
+  document.getElementById('btn-siguiente').textContent = '➜ Siguiente intento';
+  document.getElementById('btn-siguiente').onclick = siguienteIntento;
+  const aviso = document.getElementById('aviso-intentos');
+  if (aviso) aviso.style.display = 'none';
+  clearInterval(intervalo);
+  intervalo = null;
+  centesimas = 0; segundos = 0; minutos = 0;
+  tiempo = null;
+  document.getElementById('cronometro').textContent = '00:00:00';
+  document.getElementById('crono-display').className = 'crono-display';
+  document.getElementById('crono-status').textContent = 'LISTO';
+  gasPost({ action: 'clearActivo' });
+}
+// ===================== REGISTRO =====================
+let ultimoParticipante = null;
+
+function generarId(nombre) {
+  return nombre.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar tildes
+    .replace(/[^a-z0-9]+/g, '-')  // espacios y especiales → guión
+    .replace(/^-+|-+$/g, '');     // limpiar guiones al inicio/fin
+}
+
+function registrarParticipante() {
+  const nombre     = document.getElementById('f-nombre').value.trim();
+  const institucion= document.getElementById('f-institucion').value.trim();
+  const ciudad     = document.getElementById('f-ciudad').value.trim();
+  const robot      = document.getElementById('f-robot').value.trim();
+  const contacto   = document.getElementById('f-contacto').value.trim();
+  const correo     = document.getElementById('f-correo').value.trim();
+  const categoria  = document.getElementById('f-categoria').value;
+
+  if (!nombre || !institucion || !robot) {
+    showToast('⚠ Nombre, institución y robot son obligatorios', true); return;
+  }
+  if (!categoria) {
+    showToast('⚠ Selecciona una categoría de competencia', true); return;
+  }
+
+  const id = generarId(nombre);
+  const datos = { id, nombre, institucion, ciudad, robot, contacto, correo, categoria };
+
+  // Guardar en Google Sheets via GAS
+  gasPost({ action: 'setParticipante', ...datos }).then(() => {
+    // Guardar localmente también
+    const lista = JSON.parse(localStorage.getItem('participantes') || '[]');
+    const idx = lista.findIndex(p => p.id === id);
+    if (idx >= 0) lista[idx] = datos; else lista.push(datos);
+    localStorage.setItem('participantes', JSON.stringify(lista));
+
+    mostrarQR(id, robot, institucion, ciudad);
+    ultimoParticipante = datos;
+    document.getElementById('btn-email').disabled = false;
+    const alert = document.getElementById('alert-ok');
+    alert.classList.add('show');
+    setTimeout(() => alert.classList.remove('show'), 3000);
+    cargarListaLocal();
+  }).catch(() => {
+    showToast('⚠ Error al guardar en Sheets', true);
+  });
+}
+
+function mostrarQR(id, robot, inst, ciudad) {
+  document.getElementById('qr-empty').style.display = 'none';
+  document.getElementById('qr-result').style.display = 'block';
+  document.getElementById('qr-label-robot').textContent = robot;
+  document.getElementById('qr-label-inst').textContent = inst + (ciudad ? ' · ' + ciudad : '');
+
+  const canvas = document.getElementById('qr-canvas');
+  canvas.innerHTML = '';
+  new QRCode(canvas, {
+    text: id,
+    width: 200,
+    height: 200,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.H
+  });
+}
+
+function nuevoRegistro() {
+  ['f-nombre','f-institucion','f-ciudad','f-robot','f-contacto','f-correo']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-categoria').value = '';
+  document.getElementById('qr-result').style.display = 'none';
+  document.getElementById('qr-empty').style.display = 'block';
+  ultimoParticipante = null;
+  const btn = document.getElementById('btn-email');
+  btn.disabled = false;
+  btn.textContent = '✉ Enviar QR por correo';
+  btn.style.opacity = '1';
+}
+
+function enviarCorreo() {
+  if (!ultimoParticipante) { showToast('⚠ No hay participante registrado', true); return; }
+  if (!ultimoParticipante.correo) { showToast('⚠ El participante no tiene correo registrado', true); return; }
+
+  const canvas = document.querySelector('#qr-canvas canvas');
+  if (!canvas) { showToast('⚠ Primero genera el QR', true); return; }
+
+  const btn = document.getElementById('btn-email');
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+
+  const qrBase64 = canvas.toDataURL('image/png');
+
+  emailjs.send('service_1p05w3b', 'template_ecgjux8', {
+    correo_destino: ultimoParticipante.correo,
+    nombre:         ultimoParticipante.nombre,
+    nombre_robot:   ultimoParticipante.robot,
+    institucion:    ultimoParticipante.institucion,
+    ciudad:         ultimoParticipante.ciudad || '',
+    qr_image:       qrBase64
+  }).then(() => {
+    showToast('✓ QR enviado a ' + ultimoParticipante.correo);
+    btn.textContent = '✓ Correo enviado';
+    btn.style.opacity = '0.6';
+  }).catch(err => {
+    showToast('⚠ Error al enviar: ' + (err.text || err), true);
+    btn.disabled = false;
+    btn.textContent = '✉ Enviar QR por correo';
+  });
+}
+
+function imprimirQR() {
+  const canvas = document.querySelector('#qr-canvas canvas');
+  if (!canvas) return;
+  const robot = document.getElementById('qr-label-robot').textContent;
+  const inst  = document.getElementById('qr-label-inst').textContent;
+  const img   = canvas.toDataURL('image/png');
+  const win   = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><body style="text-align:center;font-family:sans-serif;padding:60px 40px">
+    <img src="${img}" style="width:220px;height:220px;display:block;margin:0 auto 16px">
+    <strong style="font-size:20px;display:block">${robot}</strong>
+    <span style="color:#666;font-size:14px">${inst}</span>
+    <script>window.onload=()=>{window.print();}<\/script>
+  </body></html>`);
+}
+
+function cargarListaLocal() {
+  const todos = JSON.parse(localStorage.getItem('participantes') || '[]');
+  const filtro = document.getElementById('filtro-categoria') ? document.getElementById('filtro-categoria').value : '';
+  const lista = filtro ? todos.filter(p => p.categoria === filtro) : todos;
+
+  const el = document.getElementById('lista-participantes');
+  const countEl = document.getElementById('lista-count');
+
+  if (countEl) {
+    if (filtro) {
+      countEl.textContent = lista.length + ' inscrito(s) en esta categoría · ' + todos.length + ' total';
+    } else {
+      countEl.textContent = todos.length + ' participante(s) registrado(s) en total';
+    }
+  }
+
+  if (lista.length === 0) {
+    el.innerHTML = '<p class="empty-list">' + (filtro ? 'No hay inscritos en esta categoría.' : 'Aún no hay participantes.') + '</p>';
+    return;
+  }
+  el.innerHTML = lista.slice().reverse().map(p => `
+    <div class="lista-item">
+      <div>
+        <div class="lista-robot">${p.robot}${p.categoria ? '<span class="lista-cat-badge">' + p.categoria + '</span>' : ''}</div>
+        <div class="lista-inst">${p.nombre ? p.nombre + ' · ' : ''}${p.institucion}${p.ciudad ? ' · ' + p.ciudad : ''}</div>
+      </div>
+      <div class="lista-actions">
+        <button class="btn-ver" onclick="verQR('${p.id}','${p.robot}','${p.institucion}','${p.ciudad||''}')">Ver QR</button>
+        <button class="btn-del" onclick="pedirBorrar('${p.id}','${p.robot}','${p.institucion}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function verQR(id, robot, inst, ciudad) {
+  mostrarQR(id, robot, inst, ciudad);
+  window.scrollTo(0, 0);
+}
+
+// ===================== BORRAR PARTICIPANTE =====================
+let idPendienteBorrar = null;
+
+function pedirBorrar(id, robot, inst) {
+  idPendienteBorrar = id;
+  document.getElementById('modal-robot-nombre').textContent = robot;
+  document.getElementById('modal-robot-sub').textContent = inst + ' — Esta acción no se puede deshacer.';
+  document.getElementById('modal-borrar').classList.add('show');
+}
+
+function cerrarModal() {
+  idPendienteBorrar = null;
+  document.getElementById('modal-borrar').classList.remove('show');
+}
+
+function confirmarBorrar() {
+  if (!idPendienteBorrar) return;
+  const id = idPendienteBorrar;
+  cerrarModal();
+
+  // Eliminar del localStorage
+  const lista = JSON.parse(localStorage.getItem('participantes') || '[]');
+  const nueva = lista.filter(p => p.id !== id);
+  localStorage.setItem('participantes', JSON.stringify(nueva));
+  cargarListaLocal();
+  showToast('✓ Participante eliminado');
+}
+
+// Cerrar modal al hacer click fuera
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('modal-borrar');
+  if (e.target === overlay) cerrarModal();
+});
+
+// ===================== TOAST =====================
+function showToast(msg, error = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = error ? 'rgba(255,59,59,0.4)' : 'rgba(0,255,136,0.4)';
+  t.style.color = error ? '#ff3b3b' : '#00ff88';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ===================== PERSISTENCIA DE ESTADO =====================
+const ESTADO_KEY = 'sucrebot_estado';
+
+function guardarEstado() {
+  if (window._reiniciando) return;  // no guardar durante reinicio
+  const estado = {
+    rondaActual,
+    intentoActual,
+    maxRondas,
+    maxIntentos,
+    rondasData,
+    menuValue: document.getElementById('menu').value
+  };
+  localStorage.setItem(ESTADO_KEY, JSON.stringify(estado));
+}
+
+function cargarEstado() {
+  try {
+    const raw = localStorage.getItem(ESTADO_KEY);
+    if (!raw) return false;
+    const estado = JSON.parse(raw);
+    rondaActual   = estado.rondaActual   || 1;
+    intentoActual = estado.intentoActual || 1;
+    maxRondas     = estado.maxRondas     || 3;
+    maxIntentos   = estado.maxIntentos   || 2;
+    rondasData    = estado.rondasData    || { 1: { clasificados: [], eliminados: [], cerrada: false } };
+    // Restaurar inputs de configuración
+    document.getElementById('cfg-rondas').value   = maxRondas;
+    document.getElementById('cfg-intentos').value = maxIntentos;
+    if (estado.menuValue) document.getElementById('menu').value = estado.menuValue;
+    actualizarBadges();
+    renderTodasRondas();
+    const rdActual = getRonda(rondaActual);
+    document.getElementById('competidos-count').textContent = rdActual.clasificados.filter(c => c.tiempo !== '—').length;
+    // Restaurar estado del botón cerrar ronda si competencia finalizada
+    if (rondaActual >= maxRondas && rdActual.cerrada) {
+      const btn = document.getElementById('btn-cerrar-ronda');
+      btn.disabled = true;
+      btn.textContent = '✓ Competencia finalizada';
+      btn.style.opacity = '0.5';
+    }
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+// Parchear funciones que cambian estado para que guarden automáticamente
+const _agregarCompetido_orig = agregarCompetido;
+agregarCompetido = function(...args) {
+  _agregarCompetido_orig(...args);
+  guardarEstado();
+  // Refrescar tabla si está visible
+  if (document.getElementById('tab-resultados').classList.contains('active')) renderTablaResultados();
+};
+const _confirmarCerrarRonda_orig = confirmarCerrarRonda;
+confirmarCerrarRonda = function() {
+  _confirmarCerrarRonda_orig();
+  guardarEstado();
+};
+const _eliminarCompetido_orig = eliminarCompetido;
+eliminarCompetido = function(...args) {
+  _eliminarCompetido_orig(...args);
+  guardarEstado();
+};
+const _recuperarEliminado_orig = recuperarEliminado;
+recuperarEliminado = function(...args) {
+  _recuperarEliminado_orig(...args);
+  guardarEstado();
+};
+
+// ===================== EXPORTAR EXCEL =====================
+function tiempoASegundos(t) {
+  if (!t || t === '—') return Infinity;
+  const partes = t.split(':').map(Number);
+  return partes[0] * 60 + partes[1] + partes[2] / 100;
+}
+
+// Estilos reutilizables
+const ESTILO_TITULO    = { font: { bold: true, sz: 14, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '0D1F3C' } }, alignment: { horizontal: 'center', vertical: 'center' } };
+const ESTILO_SUBTITULO = { font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '1A3A6B' } }, alignment: { horizontal: 'center' } };
+const ESTILO_HEADER    = { font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '2E6DA4' } }, alignment: { horizontal: 'center' } };
+const ESTILO_ORO       = { font: { bold: true, sz: 10, color: { rgb: '7D5A00' } }, fill: { fgColor: { rgb: 'FFD700' } } };
+const ESTILO_PLATA     = { font: { bold: true, sz: 10, color: { rgb: '444444' } }, fill: { fgColor: { rgb: 'C0C0C0' } } };
+const ESTILO_BRONCE    = { font: { bold: true, sz: 10, color: { rgb: '6B3A00' } }, fill: { fgColor: { rgb: 'CD7F32' } } };
+const ESTILO_PAR       = { fill: { fgColor: { rgb: 'EEF4FB' } } };
+const ESTILO_IMPAR     = { fill: { fgColor: { rgb: 'FFFFFF' } } };
+const ESTILO_TIEMPO    = { font: { name: 'Courier New', sz: 10 }, alignment: { horizontal: 'center' } };
+const ESTILO_TIEMPO_MEJOR = { font: { name: 'Courier New', sz: 10, bold: true, color: { rgb: '1A7A3C' } }, alignment: { horizontal: 'center' } };
+const ESTILO_ELIM      = { font: { color: { rgb: 'CC0000' } }, fill: { fgColor: { rgb: 'FFF0F0' } } };
+
+function setCellStyle(ws, cellAddr, style) {
+  if (!ws[cellAddr]) ws[cellAddr] = { t: 's', v: '' };
+  ws[cellAddr].s = style;
+}
+
+function aplicarEstiloRango(ws, fila, colDesde, colHasta, estilo) {
+  for (let c = colDesde; c <= colHasta; c++) {
+    const addr = XLSX.utils.encode_cell({ r: fila, c });
+    if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+    ws[addr].s = Object.assign({}, ws[addr].s || {}, estilo);
+  }
+}
+
+function crearHojaRonda(rd, r, categoria, esGeneral) {
+  // Columnas dinámicas según max intentos
+  const todos = rd.clasificados;
+  const maxIR = Math.max(...todos.map(c => (c.tiempos || [c.tiempo]).length), 1);
+  const colsBase = esGeneral
+    ? ['#', 'Robot', 'Nombre', 'Institucion', 'Ciudad', 'Mejor Tiempo']
+    : ['#', 'Robot', 'Nombre', 'Institucion', 'Ciudad', 'Mejor Tiempo'];
+  const intentoCols = Array.from({length: maxIR}, (_, i) => 'I' + (i+1));
+  const cols = [...colsBase, ...intentoCols];
+  const totalCols = cols.length;
+
+  // Ordenar de más rápido a más lento
+  const clasificados = [...todos].sort((a, b) => tiempoASegundos(a.tiempo) - tiempoASegundos(b.tiempo));
+
+  // Construir array de array para aoa_to_sheet (más control)
+  const aoa = [];
+
+  // Fila 0: título grande
+  const tituloTexto = esGeneral ? 'SucreBot — Ranking General' : 'SucreBot — ' + (r ? 'Ronda ' + r : '');
+  aoa.push([tituloTexto, ...Array(totalCols - 1).fill('')]);
+
+  // Fila 1: categoría
+  aoa.push(['Categoría: ' + (categoria || '—'), ...Array(totalCols - 1).fill('')]);
+
+  // Fila 2: vacía
+  aoa.push(Array(totalCols).fill(''));
+
+  // Fila 3: encabezados
+  aoa.push(cols);
+
+  // Filas de datos
+  clasificados.forEach((c, i) => {
+    const tiempos = c.tiempos || [c.tiempo];
+    const mejorT  = c.tiempo;
+    const fila = [
+      i + 1,
+      c.robot || '—',
+      c.nombre || '—',
+      c.institucion || '—',
+      c.ciudad || '—',
+      mejorT,
+      ...tiempos.map(t => t)
+    ];
+    aoa.push(fila);
+  });
+
+  // Eliminados (solo en hojas de ronda, no general)
+  if (!esGeneral && rd.eliminados && rd.eliminados.length > 0) {
+    aoa.push(Array(totalCols).fill(''));
+    aoa.push(['ELIMINADOS', ...Array(totalCols - 1).fill('')]);
+    rd.eliminados.forEach((c, i) => {
+      const fila = [i + 1, c.robot || '—', c.nombre || '—', c.institucion || '—', c.ciudad || '—', c.tiempo || '—', ...Array(maxIR).fill('')];
+      aoa.push(fila);
+    });
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Merge título (fila 0) y subtítulo categoría (fila 1)
+  ws['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+  ];
+
+  // Anchos de columna
+  ws['!cols'] = [
+    {wch: 4},   // #
+    {wch: 18},  // Robot
+    {wch: 20},  // Nombre
+    {wch: 22},  // Institucion
+    {wch: 12},  // Ciudad
+    {wch: 13},  // Mejor Tiempo
+    ...Array(maxIR).fill({wch: 11})
+  ];
+
+  // Alto de filas
+  ws['!rows'] = [
+    {hpt: 28},  // título
+    {hpt: 18},  // categoría
+    {hpt: 6},   // vacía
+    {hpt: 18},  // header
+  ];
+
+  // Aplicar estilos
+  // Título
+  aplicarEstiloRango(ws, 0, 0, totalCols - 1, ESTILO_TITULO);
+  // Subtítulo categoría
+  aplicarEstiloRango(ws, 1, 0, totalCols - 1, ESTILO_SUBTITULO);
+  // Headers
+  aplicarEstiloRango(ws, 3, 0, totalCols - 1, ESTILO_HEADER);
+
+  // Filas de datos
+  clasificados.forEach((c, i) => {
+    const filaIdx = 4 + i;
+    const tiempos = c.tiempos || [c.tiempo];
+    const mejorT  = c.tiempo;
+    const estiloFila = i === 0 ? ESTILO_ORO : i === 1 ? ESTILO_PLATA : i === 2 ? ESTILO_BRONCE : (i % 2 === 0 ? ESTILO_PAR : ESTILO_IMPAR);
+
+    // Columnas base
+    for (let col = 0; col < colsBase.length; col++) {
+      const addr = XLSX.utils.encode_cell({ r: filaIdx, c: col });
+      if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+      ws[addr].s = Object.assign({}, estiloFila);
+    }
+    // Columnas de intentos con fuente mono
+    tiempos.forEach((t, ti) => {
+      const addr = XLSX.utils.encode_cell({ r: filaIdx, c: colsBase.length + ti });
+      if (!ws[addr]) ws[addr] = { t: 's', v: t };
+      ws[addr].s = t === mejorT ? Object.assign({}, ESTILO_TIEMPO_MEJOR, { fill: estiloFila.fill || {} }) : Object.assign({}, ESTILO_TIEMPO, { fill: estiloFila.fill || {} });
+    });
+    // Mejor tiempo con estilo especial
+    const addrMejor = XLSX.utils.encode_cell({ r: filaIdx, c: 5 });
+    if (ws[addrMejor]) ws[addrMejor].s = Object.assign({}, ESTILO_TIEMPO_MEJOR, { fill: (estiloFila.fill || {}) });
+  });
+
+  // Eliminados
+  if (!esGeneral && rd.eliminados && rd.eliminados.length > 0) {
+    const filaEncElim = 4 + clasificados.length + 1;
+    aplicarEstiloRango(ws, filaEncElim, 0, totalCols - 1, { font: { bold: true, color: { rgb: 'CC0000' } }, fill: { fgColor: { rgb: 'FFE0E0' } } });
+    ws['!merges'].push({ s: { r: filaEncElim, c: 0 }, e: { r: filaEncElim, c: totalCols - 1 } });
+    rd.eliminados.forEach((c, i) => {
+      const filaIdx = filaEncElim + 1 + i;
+      for (let col = 0; col < totalCols; col++) {
+        const addr = XLSX.utils.encode_cell({ r: filaIdx, c: col });
+        if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+        ws[addr].s = ESTILO_ELIM;
+      }
+    });
+  }
+
+  return ws;
+}
+
+function exportarExcel() {
+  const wb = XLSX.utils.book_new();
+  const rondas = Object.keys(rondasData).map(Number).sort();
+
+  // Detectar categoría (tomar la primera que aparezca)
+  let categoriaGlobal = '—';
+  for (const r of rondas) {
+    const c = rondasData[r].clasificados[0];
+    if (c && c.categoria) { categoriaGlobal = c.categoria; break; }
+  }
+
+  // ── Hoja por cada ronda ──
+  rondas.forEach(r => {
+    const rd = rondasData[r];
+    if (rd.clasificados.length === 0 && (!rd.eliminados || rd.eliminados.length === 0)) return;
+    const ws = crearHojaRonda(rd, r, categoriaGlobal, false);
+    XLSX.utils.book_append_sheet(wb, ws, 'Ronda ' + r);
+  });
+
+  // ── Hoja Ranking General (todos los clasificados de todas las rondas, la última ronda tiene los tiempos finales) ──
+  // Usar la última ronda con clasificados como ranking final
+  const ultimaRondaConDatos = [...rondas].reverse().find(r => rondasData[r].clasificados.some(c => c.tiempo !== '—'));
+  if (ultimaRondaConDatos) {
+    const rdFinal = rondasData[ultimaRondaConDatos];
+    const wsGeneral = crearHojaRonda(rdFinal, null, categoriaGlobal, true);
+    XLSX.utils.book_append_sheet(wb, wsGeneral, 'Ranking Final');
+  }
+
+  const fecha = new Date().toLocaleDateString('es-EC').replace(/\//g, '-');
+  XLSX.writeFile(wb, 'SucreBot_Resultados_' + fecha + '.xlsx');
+  showToast('📊 Excel descargado');
+}
+
+// ===================== REINICIAR TODO =====================
+function pedirReiniciarTodo() {
+  document.getElementById('modal-reiniciar').classList.add('show');
+}
+function cerrarModalReiniciar() {
+  document.getElementById('modal-reiniciar').classList.remove('show');
+}
+function confirmarReiniciarTodo() {
+  cerrarModalReiniciar();
+
+  // 1. Borrar localStorage PRIMERO y bloquear auto-guardado temporalmente
+  window._reiniciando = true;
+  localStorage.removeItem(ESTADO_KEY);
+
+  // 2. Resetear todas las variables JS
+  if (intervalo) { clearInterval(intervalo); intervalo = null; }
+  rondaActual        = 1;
+  intentoActual      = 1;
+  maxRondas          = parseInt(document.getElementById('cfg-rondas').value)   || 3;
+  maxIntentos        = parseInt(document.getElementById('cfg-intentos').value) || 2;
+  rondasData         = { 1: { clasificados: [], eliminados: [], cerrada: false } };
+  intentosLog        = [];
+  participanteActual = null;
+  centesimas = 0; segundos = 0; minutos = 0; tiempo = null;
+
+  // 3. Restaurar cronómetro visual
+  document.getElementById('cronometro').textContent = '00:00:00';
+  document.getElementById('crono-display').className = 'crono-display';
+  document.getElementById('crono-status').textContent = 'LISTO';
+  document.getElementById('btn-siguiente').style.display = 'none';
+  document.getElementById('btn-saltar').style.display = 'none';
+  const aviso = document.getElementById('aviso-intentos');
+  if (aviso) aviso.style.display = 'none';
+
+  // 4. Restaurar strip de participante
+  const strip = document.getElementById('participante-strip');
+  strip.className = 'participante-strip empty';
+  strip.innerHTML = '<div class="p-info"><div class="p-robot">Sin participante escaneado</div><div class="p-inst">Escanea el QR para asignar</div></div><span class="p-badge">—</span>';
+
+  // 5. Restaurar log de intentos
+  document.getElementById('intentos-log').style.display = 'none';
+  document.getElementById('intentos-lista').innerHTML = '';
+
+  // 6. Restaurar botón cerrar ronda
+  const btn = document.getElementById('btn-cerrar-ronda');
+  btn.disabled = false;
+  btn.innerHTML = '🏁 Cerrar Ronda <span id="cerrar-ronda-num">1</span>';
+  btn.style.opacity = '1';
+
+  // 7. Actualizar badges y panel derecho
+  actualizarBadges();
+  renderTodasRondas();
+  document.getElementById('competidos-count').textContent = '0';
+
+  // GAS: limpiar participante activo
+  gasPost({ action: 'clearActivo' });
+
+  // Reactivar auto-guardado y guardar el estado limpio
+  window._reiniciando = false;
+  guardarEstado();
+
+  showToast('🔄 Competencia reiniciada');
+}
+
+document.addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-reiniciar')) cerrarModalReiniciar();
+});
+
+// ===================== INIT =====================
+cargarEstado() || renderTodasRondas();
+
+// Cargar participantes desde Google Sheets al iniciar
+gasGet({ action: 'getParticipantes' }).then(arr => {
+  if (Array.isArray(arr) && arr.length > 0 && arr[0].id) {
+    localStorage.setItem('participantes', JSON.stringify(arr));
+    cargarListaLocal();
+  }
+}).catch(() => {});
+
+// Iniciar polling para participante activo (celular → admin)
+iniciarPolling();
+
+// Escuchar participante enviado desde la app del celular (via polling GAS)
+const CATEGORIAS_VALOR = {
+  'Seguidor velocidad sin turbina': '1',
+  'Seguidor velocidad con turbina': '2',
+  'Robot laberinto': '3',
+  'Robot Balancín': '4',
+  'Robot trepador': '5',
+  'Seguidor destreza': '6',
+  'Drones': '7',
+  'Insectos': '8'
+};
+
+function recibirParticipanteActivo(p) {
+  if (!p || !p.id) return;
+  participanteActual = { id: p.id, robot: p.robot, nombre: p.nombre || '', institucion: p.institucion, ciudad: p.ciudad || '', categoria: p.categoria || '' };
+  intentosLog = [];
+  intentoActual = 1;
+  actualizarBadges();
+  reiniciarCronometro();
+  const strip = document.getElementById('participante-strip');
+  strip.className = 'participante-strip';
+  strip.innerHTML = `
+    <div class="p-info">
+      <div class="p-robot">${p.robot}</div>
+      <div class="p-inst">${p.institucion}${p.ciudad ? ' · ' + p.ciudad : ''}${p.categoria ? ' · <strong style="color:var(--accent)">' + p.categoria + '</strong>' : ''}</div>
+    </div>
+    <span class="p-badge">LISTO ✓</span>
+  `;
+  if (p.categoria && CATEGORIAS_VALOR[p.categoria]) {
+    document.getElementById('menu').value = CATEGORIAS_VALOR[p.categoria];
+  }
+  switchTab('crono');
+  showToast('📱 ' + p.robot + ' enviado desde el celular');
+}
+
+// polling iniciado en INIT
+</script>
+</body>
+</html>
