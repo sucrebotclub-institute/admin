@@ -1221,7 +1221,7 @@
     <div class="modal-sub">Todos los participantes de esta ronda habrán terminado. ¿Continuar?</div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="cerrarModalRonda()">Cancelar</button>
-      <button class="modal-confirm" style="border-color:rgba(255,107,53,0.4);color:var(--accent2);background:rgba(255,107,53,0.12)" onclick="confirmarCerrarRonda()">Cerrar Ronda</button>
+      <button class="modal-confirm" style="border-color:rgba(255,107,53,0.4);color:var(--accent2);background:rgba(255,107,53,0.12)" onclick="cerrarRondaYExportar()">Cerrar Ronda</button>
     </div>
   </div>
 </div>
@@ -1899,7 +1899,8 @@ function confirmarCerrarRonda() {
     renderTodasRondas();
     limpiarParticipante();
     showToast('🏆 Competencia finalizada');
-    window._competenciaFinalizada = true;
+    // Mostrar botón de descarga siempre visible al finalizar
+    document.getElementById('btn-descargar-excel').style.display = 'block';
   }
 }
 
@@ -2208,6 +2209,15 @@ function cargarEstado() {
 }
 
 // Parchear funciones que cambian estado para que guarden automáticamente
+function cerrarRondaYExportar() {
+  const esUltimaRonda = (rondaActual >= maxRondas);
+  confirmarCerrarRonda();
+  if (esUltimaRonda) {
+    setTimeout(() => {
+      try { exportarExcel(); } catch(e) { showToast('⚠ Error Excel: ' + e.message, true); }
+    }, 500);
+  }
+}
 const _agregarCompetido_orig = agregarCompetido;
 agregarCompetido = function(...args) {
   _agregarCompetido_orig(...args);
@@ -2219,12 +2229,6 @@ const _confirmarCerrarRonda_orig = confirmarCerrarRonda;
 confirmarCerrarRonda = function() {
   _confirmarCerrarRonda_orig();
   guardarEstado();
-  // Si es la ronda final, exportar Excel después de que todo esté guardado
-  if (window._competenciaFinalizada) {
-    window._competenciaFinalizada = false;
-    showToast('📊 Generando Excel...');
-    setTimeout(() => exportarExcel(), 600);
-  }
 };
 const _eliminarCompetido_orig = eliminarCompetido;
 eliminarCompetido = function(...args) {
