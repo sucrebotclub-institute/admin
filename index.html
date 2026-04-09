@@ -1099,13 +1099,13 @@
           🏁 Cerrar Ronda <span id="cerrar-ronda-num">1</span>
         </button>
         <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button class="btn-reiniciar-todo" onclick="pedirReiniciarTodo()" title="Reiniciar todo" style="flex:1">
+          <button class="btn-exportar-excel" onclick="exportarExcel()" title="Descargar resultados en Excel">
+            📊 Exportar Excel
+          </button>
+          <button class="btn-reiniciar-todo" onclick="pedirReiniciarTodo()" title="Reiniciar todo">
             🔄 Reiniciar
           </button>
         </div>
-        <button id="btn-descargar-excel" onclick="exportarExcel()" style="display:none;width:100%;margin-bottom:14px;background:rgba(0,255,136,0.07);border:1px solid rgba(0,255,136,0.3);color:var(--green);font-family:var(--font-body);font-size:0.78rem;font-weight:600;padding:9px 6px;border-radius:8px;cursor:pointer;">
-          📊 Descargar Excel
-        </button>
 
         <!-- RONDAS DINÁMICAS -->
         <div id="rondas-container"></div>
@@ -1232,7 +1232,15 @@
     <div class="modal-icon">🔄</div>
     <div class="modal-title" style="color:var(--red)">REINICIAR TODO</div>
     <div class="modal-name">¿Borrar toda la competencia?</div>
-    <div class="modal-sub">Se eliminarán todas las rondas, tiempos y el participante activo. Quedará como al abrir la página.</div>
+    <div class="modal-sub" id="modal-reiniciar-sub">Se eliminarán todas las rondas, tiempos y el participante activo. Quedará como al abrir la página.</div>
+    <div id="modal-reiniciar-excel-aviso" style="display:none;margin-bottom:14px;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.4);color:var(--accent2);font-family:var(--font-mono);font-size:0.72rem;padding:10px 14px;border-radius:8px;letter-spacing:0.05em;">
+      ⚠ AÚN NO HAS DESCARGADO EL EXCEL — los resultados se perderán si reinicias sin exportar primero.
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px" id="modal-reiniciar-btn-excel" style="display:none">
+      <button onclick="exportarExcel();document.getElementById('modal-reiniciar-excel-aviso').style.display='none';document.getElementById('modal-reiniciar-btn-excel').style.display='none';" style="flex:1;background:rgba(0,255,136,0.08);border:1px solid rgba(0,255,136,0.35);color:var(--green);font-family:var(--font-body);font-size:0.82rem;font-weight:600;padding:10px;border-radius:8px;cursor:pointer;">
+        📊 Exportar Excel primero
+      </button>
+    </div>
     <div class="modal-btns">
       <button class="modal-cancel" onclick="cerrarModalReiniciar()">Cancelar</button>
       <button class="modal-confirm" style="border-color:rgba(255,59,59,0.5);color:var(--red);background:rgba(255,59,59,0.15)" onclick="confirmarReiniciarTodo()">Sí, reiniciar</button>
@@ -2448,6 +2456,7 @@ function exportarExcel() {
 
     const fecha = new Date().toLocaleDateString('es-EC').replace(/\//g, '-');
     XLSX.writeFile(wb, 'SucreBot_Resultados_' + fecha + '.xlsx');
+    window._excelDescargado = true;
     showToast('📊 Excel descargado');
     // Mostrar botón de descarga de respaldo
     document.getElementById('btn-descargar-excel').style.display = 'block';
@@ -2459,6 +2468,19 @@ function exportarExcel() {
 
 // ===================== REINICIAR TODO =====================
 function pedirReiniciarTodo() {
+  // Verificar si hay datos y no se ha descargado el Excel
+  const hayDatos = Object.values(rondasData).some(r =>
+    r.clasificados && r.clasificados.some(c => c.tiempo && c.tiempo !== '—')
+  );
+  const aviso = document.getElementById('modal-reiniciar-excel-aviso');
+  const btnExcel = document.getElementById('modal-reiniciar-btn-excel');
+  if (hayDatos && !window._excelDescargado) {
+    aviso.style.display = 'block';
+    btnExcel.style.display = 'flex';
+  } else {
+    aviso.style.display = 'none';
+    btnExcel.style.display = 'none';
+  }
   document.getElementById('modal-reiniciar').classList.add('show');
 }
 function cerrarModalReiniciar() {
@@ -2516,6 +2538,7 @@ function confirmarReiniciarTodo() {
 
   // Reactivar auto-guardado y guardar el estado limpio
   window._reiniciando = false;
+  window._excelDescargado = false;
   guardarEstado();
 
   showToast('🔄 Competencia reiniciada');
