@@ -1895,9 +1895,8 @@ function confirmarCerrarRonda() {
     document.getElementById('btn-cerrar-ronda').style.opacity = '0.5';
     renderTodasRondas();
     limpiarParticipante();
-    showToast('🏆 Competencia finalizada — generando Excel...');
-    // Pequeño delay para que el toast sea visible antes de la descarga
-    setTimeout(() => exportarExcel(), 800);
+    showToast('🏆 Competencia finalizada');
+    window._competenciaFinalizada = true;
   }
 }
 
@@ -2217,6 +2216,12 @@ const _confirmarCerrarRonda_orig = confirmarCerrarRonda;
 confirmarCerrarRonda = function() {
   _confirmarCerrarRonda_orig();
   guardarEstado();
+  // Si es la ronda final, exportar Excel después de que todo esté guardado
+  if (window._competenciaFinalizada) {
+    window._competenciaFinalizada = false;
+    showToast('📊 Generando Excel...');
+    setTimeout(() => exportarExcel(), 600);
+  }
 };
 const _eliminarCompetido_orig = eliminarCompetido;
 eliminarCompetido = function(...args) {
