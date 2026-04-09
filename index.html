@@ -1103,6 +1103,9 @@
             🔄 Reiniciar
           </button>
         </div>
+        <button id="btn-descargar-excel" onclick="exportarExcel()" style="display:none;width:100%;margin-bottom:14px;background:rgba(0,255,136,0.07);border:1px solid rgba(0,255,136,0.3);color:var(--green);font-family:var(--font-body);font-size:0.78rem;font-weight:600;padding:9px 6px;border-radius:8px;cursor:pointer;">
+          📊 Descargar Excel
+        </button>
 
         <!-- RONDAS DINÁMICAS -->
         <div id="rondas-container"></div>
@@ -2401,36 +2404,53 @@ function crearHojaRonda(rd, r, categoria, esGeneral) {
 }
 
 function exportarExcel() {
-  const wb = XLSX.utils.book_new();
-  const rondas = Object.keys(rondasData).map(Number).sort();
+  try {
+    if (typeof XLSX === 'undefined') {
+      showToast('⚠ Error: librería Excel no cargada', true);
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const rondas = Object.keys(rondasData).map(Number).sort();
 
-  // Detectar categoría (tomar la primera que aparezca)
-  let categoriaGlobal = '—';
-  for (const r of rondas) {
-    const c = rondasData[r].clasificados[0];
-    if (c && c.categoria) { categoriaGlobal = c.categoria; break; }
+    if (rondas.length === 0) {
+      showToast('⚠ No hay datos para exportar', true);
+      return;
+    }
+
+    let categoriaGlobal = '—';
+    for (const r of rondas) {
+      const c = rondasData[r].clasificados[0];
+      if (c && c.categoria) { categoriaGlobal = c.categoria; break; }
+    }
+
+    rondas.forEach(r => {
+      const rd = rondasData[r];
+      if (rd.clasificados.length === 0 && (!rd.eliminados || rd.eliminados.length === 0)) return;
+      const ws = crearHojaRonda(rd, r, categoriaGlobal, false);
+      XLSX.utils.book_append_sheet(wb, ws, 'Ronda ' + r);
+    });
+
+    const ultimaRondaConDatos = [...rondas].reverse().find(r => rondasData[r].clasificados.some(c => c.tiempo !== '—'));
+    if (ultimaRondaConDatos) {
+      const rdFinal = rondasData[ultimaRondaConDatos];
+      const wsGeneral = crearHojaRonda(rdFinal, null, categoriaGlobal, true);
+      XLSX.utils.book_append_sheet(wb, wsGeneral, 'Ranking Final');
+    }
+
+    if (wb.SheetNames.length === 0) {
+      showToast('⚠ No hay resultados con tiempo para exportar', true);
+      return;
+    }
+
+    const fecha = new Date().toLocaleDateString('es-EC').replace(/\//g, '-');
+    XLSX.writeFile(wb, 'SucreBot_Resultados_' + fecha + '.xlsx');
+    showToast('📊 Excel descargado');
+    // Mostrar botón de descarga de respaldo
+    document.getElementById('btn-descargar-excel').style.display = 'block';
+  } catch(err) {
+    showToast('⚠ Error al generar Excel: ' + err.message, true);
+    document.getElementById('btn-descargar-excel').style.display = 'block';
   }
-
-  // ── Hoja por cada ronda ──
-  rondas.forEach(r => {
-    const rd = rondasData[r];
-    if (rd.clasificados.length === 0 && (!rd.eliminados || rd.eliminados.length === 0)) return;
-    const ws = crearHojaRonda(rd, r, categoriaGlobal, false);
-    XLSX.utils.book_append_sheet(wb, ws, 'Ronda ' + r);
-  });
-
-  // ── Hoja Ranking General (todos los clasificados de todas las rondas, la última ronda tiene los tiempos finales) ──
-  // Usar la última ronda con clasificados como ranking final
-  const ultimaRondaConDatos = [...rondas].reverse().find(r => rondasData[r].clasificados.some(c => c.tiempo !== '—'));
-  if (ultimaRondaConDatos) {
-    const rdFinal = rondasData[ultimaRondaConDatos];
-    const wsGeneral = crearHojaRonda(rdFinal, null, categoriaGlobal, true);
-    XLSX.utils.book_append_sheet(wb, wsGeneral, 'Ranking Final');
-  }
-
-  const fecha = new Date().toLocaleDateString('es-EC').replace(/\//g, '-');
-  XLSX.writeFile(wb, 'SucreBot_Resultados_' + fecha + '.xlsx');
-  showToast('📊 Excel descargado');
 }
 
 // ===================== REINICIAR TODO =====================
