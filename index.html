@@ -1099,10 +1099,7 @@
           🏁 Cerrar Ronda <span id="cerrar-ronda-num">1</span>
         </button>
         <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button class="btn-exportar-excel" onclick="exportarExcel()" title="Descargar resultados en Excel">
-            📊 Exportar Excel
-          </button>
-          <button class="btn-reiniciar-todo" onclick="pedirReiniciarTodo()" title="Reiniciar todo">
+          <button class="btn-reiniciar-todo" onclick="pedirReiniciarTodo()" title="Reiniciar todo" style="flex:1">
             🔄 Reiniciar
           </button>
         </div>
@@ -1898,7 +1895,9 @@ function confirmarCerrarRonda() {
     document.getElementById('btn-cerrar-ronda').style.opacity = '0.5';
     renderTodasRondas();
     limpiarParticipante();
-    showToast('🏆 Competencia finalizada');
+    showToast('🏆 Competencia finalizada — generando Excel...');
+    // Pequeño delay para que el toast sea visible antes de la descarga
+    setTimeout(() => exportarExcel(), 800);
   }
 }
 
